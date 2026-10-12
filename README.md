@@ -2,25 +2,30 @@
 
 [![LangGraph](https://img.shields.io/badge/Orchestrator-LangGraph-blue.svg)](https://github.com/langchain-ai/langgraph)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com)
-[![Next.js](https://img.shields.io/badge/Frontend-Next.js%2014-black.svg)](https://nextjs.org)
+[![Next.js](https://img.shields.io/badge/Frontend-Next.js%2016-black.svg)](https://nextjs.org)
+[![Supabase](https://img.shields.io/badge/Storage-Supabase%20Storage-3ECF8E.svg)](https://supabase.com)
+[![Qdrant](https://img.shields.io/badge/VectorDB-Qdrant%20Cloud-DC2626.svg)](https://qdrant.tech)
 [![ChromaDB](https://img.shields.io/badge/VectorDB-ChromaDB-orange.svg)](https://www.trychroma.com)
+[![Groq](https://img.shields.io/badge/LLM-Groq%20LPU%20(Ultra--Fast)-F55036.svg)](https://groq.com)
 [![Ollama](https://img.shields.io/badge/Inference-Ollama%20(Local%20%26%20Free)-purple.svg)](https://ollama.ai)
 [![Docker](https://img.shields.io/badge/Deployment-Docker%20Compose-2496ED.svg)](https://www.docker.com)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-An enterprise-grade, self-hosted **Agentic Retrieval-Augmented Generation (RAG) Copilot** built with **LangGraph**, **FastAPI**, **ChromaDB**, and **Next.js 14**. Powered 100% locally by **Ollama (`qwen3:1.7b`)** for reasoning and **`nomic-embed-text`** for high-dimensional semantic embeddings—guaranteeing **zero API costs**, **complete data privacy**, and **air-gapped deployment readiness**.
+An enterprise-grade, hybrid cloud & self-hosted **Agentic Retrieval-Augmented Generation (RAG) Copilot** built with **LangGraph**, **FastAPI**, **Supabase Cloud Storage**, **Qdrant Cloud / ChromaDB**, and **Next.js 16**. Powered by **Groq LPU (`qwen/qwen3.8-27b`)** for ultra-low latency token generation (with local **Ollama** fallback) and **`nomic-embed-text`** for high-dimensional semantic embeddings.
 
 ---
 
 ## 🌟 Key Features
 
-- **⚡ Corrective RAG (CRAG) Workflow:** Built with a **LangGraph state machine** that autonomously routes queries, evaluates retrieved chunks for semantic relevance, filters out noise, and triggers a real-time web fallback if internal documents are insufficient.
-- **🔒 100% Free & Local Privacy:** Runs locally on **Ollama** using `qwen3:1.7b` and `nomic-embed-text` (768-dim embeddings). Zero subscriptions, zero external API keys, zero token fees.
-- **📡 Real-Time SSE Token & Trace Streaming:** Implements Server-Sent Events (SSE) that stream LLM tokens, source citations, and LangGraph agent execution traces (`Routing` → `Retrieval` → `CRAG Grading` → `Synthesis`) directly to the frontend.
-- **📚 Interactive Knowledge Base Manager:** Supports drag-and-drop ingestion of enterprise documentation (PDF with page splitting, Markdown, TXT, CSV), recursive semantic chunking, and metadata tracking.
-- **🏷️ Verifiable Citations & Source Drawer:** Every response features interactive citation badges (`[Doc 1]`, `[Web 1]`) displaying cosine match scores, page numbers, and exact chunk previews in a slide-out drawer.
+- **⚡ Corrective RAG (CRAG) Workflow:** Built with a **LangGraph state machine** that autonomously routes queries, evaluates retrieved chunks for semantic relevance, filters noise, and triggers real-time web fallbacks if internal documentation is insufficient.
+- **☁️ Supabase Cloud Storage:** Raw enterprise documents (PDF with page splitting, Markdown, TXT, CSV) are stored securely in **Supabase Storage** in the `knowledge-documents` bucket with public access URLs and synchronized two-way deletion.
+- **🎯 Multi-Provider Vector Store:** Dual-engine vector indexing supporting production **Qdrant Cloud (AWS cluster)** with automatic local **ChromaDB** fallback.
+- **⚡ Ultra-Fast Inference via Groq LPU & Local Ollama:** Sub-second time-to-first-token (TTFT) powered by Groq's high-speed inference engine (`qwen/qwen3.8-27b`), with optional 100% offline local inference using Ollama (`qwen3:1.7b`).
+- **📡 Real-Time SSE Token & Trace Streaming:** Server-Sent Events (SSE) that stream LLM tokens, source citations, and LangGraph agent execution traces (`Routing` → `Retrieval` → `CRAG Grading` → `Synthesis`) directly to the frontend.
+- **📚 Interactive Knowledge Base Manager:** Drag-and-drop file ingestion, individual document deletion with live progress spinners, text snippet note indexer, and sample enterprise policy seeding.
+- **🏷️ Verifiable Citations & Source Drawer:** Every response features interactive citation badges (`[Doc 1]`, `[Web 1]`) displaying cosine match scores, page numbers, and exact chunk previews in a slide-out drawer with direct links to Supabase Storage.
 - **🌐 Live Web Intelligence Fallback:** Integrates DuckDuckGo live search for real-time external queries or when internal documentation lacks coverage.
-- **🐳 Enterprise Docker Orchestration:** Complete multi-container setup via `docker-compose.yml` linking FastAPI, ChromaDB persistence, and Next.js.
+- **🐳 Enterprise Docker Orchestration:** Complete multi-container setup via `docker-compose.yml` linking FastAPI, Supabase storage configs, and Next.js.
 
 ---
 
@@ -28,38 +33,47 @@ An enterprise-grade, self-hosted **Agentic Retrieval-Augmented Generation (RAG) 
 
 ```mermaid
 flowchart TD
-    User([User Prompt]) --> Frontend[Next.js 14 Copilot Interface]
-    Frontend -->|HTTP POST /api/chat/stream| Gateway[FastAPI Async Gateway]
+    User([User Prompt / File Upload]) --> Frontend[Next.js 16 Copilot Interface]
+    Frontend -->|POST /api/documents/upload| DocRoute[Document API Gateway]
+    Frontend -->|POST /api/chat/stream| ChatRoute[FastAPI Chat Gateway]
     
+    subgraph Storage ["Document & Object Storage"]
+        Supabase[(Supabase Storage: knowledge-documents)]
+        DiskBackup[Local Upload Directory Backup]
+    end
+
+    DocRoute -->|1. Store Raw File| Supabase
+    DocRoute -->|2. Local Cache| DiskBackup
+    DocRoute -->|3. Chunk & Embed| VectorEngine
+
+    subgraph VectorEngine ["Vector Store & Embeddings"]
+        Embedder[nomic-embed-text 768d]
+        Qdrant[(Qdrant Cloud AWS Cluster)]
+        Chroma[(ChromaDB Embedded Fallback)]
+    end
+
     subgraph LangGraph ["LangGraph Agentic State Machine"]
         Router{Intent Classifier & Router}
-        Retriever[ChromaDB Semantic Retrieval]
+        Retriever[Vector Semantic Search]
         Grader{CRAG Relevance Grader}
         WebSearch[DuckDuckGo Live Search]
-        Generator[Qwen3:1.7B Response Synthesizer]
+        Synthesizer[Groq LPU / Ollama Synthesizer]
     end
 
-    subgraph Storage ["Local Storage & Vector Store"]
-        Chroma[(ChromaDB Persistent Store)]
-        Embeddings[nomic-embed-text 768d]
-        OllamaEngine[Ollama Inference Daemon]
-    end
-
-    Gateway --> Router
+    ChatRoute --> Router
     Router -->|RAG Intent| Retriever
     Router -->|Web Intent| WebSearch
-    Router -->|Direct Intent| Generator
-    
-    Retriever -->|Embed Query| Embeddings
-    Embeddings -->|Cosine Search| Chroma
-    Chroma -->|Candidate Chunks| Grader
+    Router -->|Direct Intent| Synthesizer
 
-    Grader -->|Confidence >= 0.35| Generator
+    Retriever -->|Query Embeddings| Embedder
+    Embedder -->|Cosine Similarity| Qdrant
+    Qdrant -->|Candidate Chunks| Grader
+
+    Grader -->|Confidence >= 0.35| Synthesizer
     Grader -->|No Relevant Chunks| WebSearch
-    WebSearch -->|Live Snippets| Generator
+    WebSearch -->|Live Snippets| Synthesizer
 
-    Generator -->|Inference Stream| OllamaEngine
-    Generator -->|SSE: Traces + Citations + Tokens| Frontend
+    Synthesizer -->|SSE: Traces + Citations + Tokens| Frontend
 ```
 
 ---
@@ -68,12 +82,13 @@ flowchart TD
 
 > *Add these bullet points directly to your resume under Projects or Experience:*
 
-- **Enterprise Agentic RAG Copilot (FastAPI, LangGraph, ChromaDB, Next.js, Ollama):**
-  - Architected a self-hosted enterprise Agentic RAG system with **LangGraph**, implementing **Corrective RAG (CRAG)** to autonomously grade vector document relevance and trigger dynamic web fallbacks.
-  - Built an asynchronous **FastAPI** backend supporting **Server-Sent Events (SSE)** for real-time streaming of LLM tokens, step-by-step reasoning traces, and citation metadata.
-  - Integrated local **Ollama (`qwen3:1.7b`)** and **`nomic-embed-text`** (768-dimensional embeddings) with **ChromaDB**, achieving sub-second retrieval latency with zero operational API costs.
-  - Developed an enterprise **Next.js 14** dashboard featuring interactive citation inspection drawers, live LangGraph trace timelines, and a document ingestion pipeline for multi-page PDFs and Markdown files.
-  - Containerized services with **Docker** and **Docker Compose**, establishing multi-stage builds and isolated volume persistence for production readiness.
+- **Enterprise Agentic RAG Copilot (FastAPI, LangGraph, Supabase Storage, Qdrant Cloud, Next.js, Groq):**
+  - Architected a hybrid enterprise Agentic RAG system with **LangGraph**, implementing **Corrective RAG (CRAG)** to autonomously grade vector document relevance and trigger dynamic web fallbacks.
+  - Implemented cloud object storage with **Supabase Storage** (`knowledge-documents` bucket) for enterprise document archiving and synchronized multi-chunk deletions.
+  - Deployed dual-tier vector storage with **Qdrant Cloud** and **ChromaDB**, using **`nomic-embed-text`** for 768-dimensional normalized cosine retrieval.
+  - Built an asynchronous **FastAPI** backend supporting **Server-Sent Events (SSE)** for real-time streaming of LLM tokens, step-by-step reasoning traces, and citation metadata via **Groq LPU** (`qwen/qwen3.8-27b`).
+  - Developed a high-performance **Next.js 16** dashboard featuring interactive citation inspection drawers, live LangGraph trace timelines, and drag-and-drop document ingestion.
+  - Containerized services with **Docker Compose**, establishing environment-driven configurations and volume persistence.
 
 ---
 
@@ -81,49 +96,55 @@ flowchart TD
 
 ```
 .
+├── .env                       # Local secrets & credentials (git-ignored)
+├── .env.example               # Template environment configuration
+├── .gitignore                 # Comprehensive git-ignore rules
+├── LICENSE                    # Apache License 2.0
+├── README.md                  # System documentation & architectural guide
+├── docker-compose.yml         # Container orchestration
 ├── backend/
-│   ├── app/
-│   │   ├── config.py              # Pydantic Settings & environment configuration
-│   │   ├── main.py                # FastAPI app lifecycle, CORS, startup auto-seeding
-│   │   ├── core/
-│   │   │   ├── ollama_client.py   # Ollama LLM & nomic-embed-text wrappers + health checks
-│   │   │   └── vector_store.py    # ChromaDB persistent collection manager
-│   │   ├── agent/
-│   │   │   ├── state.py           # LangGraph AgentState and Citation schemas
-│   │   │   ├── graph.py           # CRAG StateGraph (Router -> Retrieve -> Grade -> Web -> Generate)
-│   │   │   ├── tools.py           # ChromaDB retriever & DuckDuckGo search tools
-│   │   │   └── prompts.py         # System prompts tuned for Qwen3:1.7B
-│   │   ├── services/
-│   │   │   ├── document_service.py# PDF & text parser, recursive chunking, seed knowledge
-│   │   │   └── chat_service.py    # Session manager & SSE token streaming generator
-│   │   └── api/
-│   │       ├── routes_chat.py     # POST /api/chat/stream, session CRUD
-│   │       ├── routes_documents.py# POST /api/documents/upload, text indexing, seed endpoint
-│   │       └── routes_health.py   # GET /api/health (Ollama & ChromaDB status)
-│   ├── Dockerfile                 # Backend container definition
-│   ├── requirements.txt           # Python dependencies
-│   └── run.py                     # Uvicorn server launcher
-├── frontend/
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── globals.css        # Enterprise glassmorphism, dark theme, markdown styles
-│   │   │   ├── layout.tsx         # Root layout with Inter font and SEO metadata
-│   │   │   └── page.tsx           # Copilot workspace, message feed, starter prompts
-│   │   ├── components/
-│   │   │   ├── Header.tsx         # Live health pill, mode selector, vector stats
-│   │   │   ├── Sidebar.tsx        # Conversation history, knowledge base button, resume stack
-│   │   │   ├── ChatInput.tsx      # Multi-line input, document shortcut, stop button
-│   │   │   ├── MessageItem.tsx    # Markdown renderer, code blocks, citation badges
-│   │   │   ├── AgentTraceTimeline.tsx # Visual LangGraph execution timeline
-│   │   │   ├── CitationsDrawer.tsx# Source chunk inspector with similarity scores
-│   │   │   └── KnowledgeBaseModal.tsx # Document inventory, PDF uploader, text notes
-│   │   └── lib/
-│   │       ├── api.ts             # SSE stream consumer & REST client
-│   │       └── types.ts           # Shared TypeScript interfaces
-│   ├── Dockerfile                 # Multi-stage Next.js production Dockerfile
-│   └── package.json
-├── docker-compose.yml             # Orchestration for frontend & backend
-└── README.md
+│   ├── Dockerfile             # FastAPI backend container definition
+│   ├── requirements.txt       # Python dependencies (FastAPI, LangGraph, Supabase, Qdrant)
+│   ├── run.py                 # Uvicorn server launcher
+│   └── app/
+│       ├── config.py          # Pydantic Settings & environment discovery
+│       ├── main.py            # FastAPI app lifecycle, CORS, startup handlers
+│       ├── agent/
+│       │   ├── state.py       # LangGraph AgentState and Citation schemas
+│       │   ├── graph.py       # CRAG StateGraph (Router -> Retrieve -> Grade -> Web -> Generate)
+│       │   ├── tools.py       # Vector store retriever & DuckDuckGo search tools
+│       │   └── prompts.py     # System prompts tuned for Qwen models
+│       ├── core/
+│       │   ├── supabase_client.py # Supabase Storage manager (knowledge-documents bucket)
+│       │   ├── vector_store.py    # Qdrant Cloud & ChromaDB manager
+│       │   ├── llm_client.py      # Groq cloud LPU inference client
+│       │   └── ollama_client.py   # Ollama local inference & nomic-embed-text client
+│       ├── services/
+│       │   ├── document_service.py# Supabase ingestion, PDF parsing, chunking, deletions
+│       │   └── chat_service.py    # Session manager & SSE token streaming generator
+│       └── api/
+│           ├── routes_chat.py     # POST /api/chat/stream, session CRUD
+│           ├── routes_documents.py# Document upload, raw text indexing, delete endpoints
+│           └── routes_health.py   # GET /api/health (LLM, Qdrant, Supabase status)
+└── frontend/
+    ├── Dockerfile             # Multi-stage Next.js production Dockerfile
+    ├── package.json           # Frontend dependencies
+    └── src/
+        ├── app/
+        │   ├── globals.css    # Enterprise glassmorphism, dark theme, markdown styles
+        │   ├── layout.tsx     # Root layout with metadata
+        │   └── page.tsx       # Copilot workspace, message feed, starter prompts
+        ├── components/
+        │   ├── Header.tsx     # Live health indicator, mode selector, vector stats
+        │   ├── Sidebar.tsx    # Conversation history, knowledge base modal toggle
+        │   ├── ChatInput.tsx  # Multi-line input, document shortcut, stop button
+        │   ├── MessageItem.tsx# Markdown renderer, code blocks, citation badges
+        │   ├── AgentTraceTimeline.tsx # Visual LangGraph execution timeline
+        │   ├── CitationsDrawer.tsx    # Source chunk inspector with similarity scores
+        │   └── KnowledgeBaseModal.tsx # Supabase document uploader, inventory, deletions
+        └── lib/
+            ├── api.ts         # SSE stream consumer & REST API client
+            └── types.ts       # Shared TypeScript interfaces
 ```
 
 ---
@@ -132,45 +153,64 @@ flowchart TD
 
 ### Prerequisites
 
-1. **Ollama:** Installed and running on your machine:
+1. **Python 3.10+**
+2. **Node.js 18+**
+3. **Ollama:** Installed locally if running in local inference mode:
    ```bash
    ollama pull qwen3:1.7b
    ollama pull nomic-embed-text
    ```
-2. **Python 3.10+**
-3. **Node.js 18+**
 
 ---
 
-### 1. Launch Backend (FastAPI)
+### 1. Environment Configuration
+
+Copy `.env.example` to `.env` in the project root:
 
 ```bash
-# Navigate to backend and create virtual environment
+cp .env.example .env
+```
+
+Configure your credentials in `.env`:
+```ini
+# Groq Cloud (Recommended Ultra-Fast Cloud LPU - Free at https://console.groq.com)
+LLM_PROVIDER="groq"
+GROQ_API_KEY="gsk_your_groq_api_key_here"
+GROQ_MODEL="qwen/qwen3.8-27b"
+
+# Supabase Storage (Cloud Object Storage - Free at https://supabase.com)
+SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_PUBLISHABLE_KEY="your-supabase-publishable-key"
+SUPABASE_SECRET_KEY="your-supabase-secret-key"
+SUPABASE_BUCKET_NAME="knowledge-documents"
+
+# Qdrant Cloud (Cloud Vector DB - Free 1GB at https://cloud.qdrant.io)
+VECTOR_DB_TYPE="qdrant"
+QDRANT_URL="https://your-cluster.qdrant.io"
+QDRANT_API_KEY="your-qdrant-api-key"
+```
+
+---
+
+### 2. Launch Backend (FastAPI)
+
+```bash
 cd backend
 python3 -m venv venv
 source venv/bin/activate
-
-# Install requirements
 pip install -r requirements.txt
-
-# Run backend server
 python run.py
 ```
 > The API will be live at `http://localhost:8000`.  
-> Interactive OpenAPI documentation is available at `http://localhost:8000/docs`.
+> Interactive OpenAPI documentation: `http://localhost:8000/docs`.
 
 ---
 
-### 2. Launch Frontend (Next.js)
+### 3. Launch Frontend (Next.js)
 
 ```bash
-# Open a new terminal and navigate to frontend
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
 > The Copilot UI will be live at `http://localhost:3000`.
@@ -187,7 +227,6 @@ docker compose up --build
 
 - **Frontend:** `http://localhost:3000`
 - **Backend API:** `http://localhost:8000`
-- **Ollama Connection:** Container automatically connects to host Ollama daemon via `host.docker.internal:11434`.
 
 ---
 
@@ -195,19 +234,19 @@ docker compose up --build
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/health` | Comprehensive health check (Ollama daemon, models, Chroma stats) |
+| `GET` | `/api/health` | Comprehensive health check (LLM, Qdrant/Chroma, Ollama status) |
 | `POST` | `/api/chat/stream` | Server-Sent Events (SSE) streaming endpoint (Traces, Citations, Tokens) |
 | `GET` | `/api/chat/sessions` | List all conversation sessions |
 | `GET` | `/api/chat/sessions/{id}` | Retrieve chat history for a session |
 | `DELETE`| `/api/chat/sessions/{id}` | Delete a chat session |
-| `GET` | `/api/documents` | List indexed documents and chunk statistics |
-| `POST` | `/api/documents/upload` | Upload & index file (`.pdf`, `.txt`, `.md`, `.csv`) |
+| `GET` | `/api/documents` | List indexed documents, chunk statistics, and Supabase storage URLs |
+| `POST` | `/api/documents/upload` | Upload file to Supabase Storage (`knowledge-documents`) & index into vector DB |
 | `POST` | `/api/documents/text` | Ingest raw text note or corporate SOP |
 | `POST` | `/api/documents/seed` | Seed default enterprise policies (AI Governance, SRE, HR) |
-| `DELETE`| `/api/documents/{file}` | Delete document and remove all vector embeddings |
+| `DELETE`| `/api/documents/{file}` | Delete document from Supabase Storage and remove all vector embeddings |
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.

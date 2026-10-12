@@ -71,11 +71,11 @@ class Settings(BaseSettings):
     UPSTASH_REDIS_REST_URL: Optional[str] = None
     UPSTASH_REDIS_REST_TOKEN: Optional[str] = None
 
-    # 5. Cloud Object Storage for Document Files (Cloudflare R2 Free 10GB)
-    R2_ACCOUNT_ID: Optional[str] = None
-    R2_ACCESS_KEY_ID: Optional[str] = None
-    R2_SECRET_ACCESS_KEY: Optional[str] = None
-    R2_BUCKET_NAME: Optional[str] = "copilot-documents"
+    # 5. Cloud Object Storage for Document Files (Supabase Storage)
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_PUBLISHABLE_KEY: Optional[str] = None
+    SUPABASE_SECRET_KEY: Optional[str] = None
+    SUPABASE_BUCKET_NAME: str = "knowledge-documents"
 
     class Config:
         # Automatically detects .env in both backend/ and project root
@@ -88,6 +88,13 @@ class Settings(BaseSettings):
 
 # Global singleton instance of Settings
 settings = Settings()
+
+# Resolve relative paths against backend directory to avoid creating root data/
+for attr in ["CHROMA_PERSIST_DIR", "UPLOAD_DIR", "SESSIONS_DIR"]:
+    val = getattr(settings, attr)
+    if val and not Path(val).is_absolute():
+        clean_rel = val.lstrip("./")
+        setattr(settings, attr, str((settings.BASE_DIR / clean_rel).resolve()))
 
 # Ensure required data directories exist
 os.makedirs(settings.CHROMA_PERSIST_DIR, exist_ok=True)

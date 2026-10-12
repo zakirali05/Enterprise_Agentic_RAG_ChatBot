@@ -47,6 +47,7 @@ export interface DocumentInfo {
   category: string;
   uploaded_at: string;
   file_size: number;
+  storage_url?: string;
 }
 
 export interface KnowledgeStats {

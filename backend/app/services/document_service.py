@@ -17,15 +17,17 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.config import settings
 from app.core.vector_store import get_vector_manager
+from app.core.supabase_client import get_supabase_storage
 
 
 class DocumentService:
     """
-    Manages document parsing, chunking with nomic-embed-text embeddings, and indexing.
+    Manages document parsing, chunking with nomic-embed-text embeddings, Supabase Storage, and indexing.
     """
 
     def __init__(self):
         self.vector_manager = get_vector_manager()
+        self.supabase_storage = get_supabase_storage()
         # Recursive text splitter respects paragraphs, lines, and sentence boundaries
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=settings.CHUNK_SIZE,
@@ -77,8 +79,18 @@ class DocumentService:
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         file_size = len(content_bytes)
 
-        # Save copy to upload directory
+        # 1. Clean filename
         clean_filename = Path(filename).name
+
+        # 2. Upload file to Supabase Cloud Storage (bucket: "knowledge-documents")
+        supabase_info = self.supabase_storage.upload_file(
+            filename=clean_filename,
+            content_bytes=content_bytes
+        )
+        storage_url = supabase_info.get("public_url") or ""
+        uploaded_to_supabase = supabase_info.get("uploaded_to_supabase", False)
+
+        # 3. Save local copy to upload directory as local fallback
         save_path = Path(settings.UPLOAD_DIR) / clean_filename
         with open(save_path, "wb") as f:
             f.write(content_bytes)
@@ -97,6 +109,8 @@ class DocumentService:
                         "category": category,
                         "file_size": file_size,
                         "uploaded_at": now_str,
+                        "storage_url": storage_url,
+                        "storage_provider": "supabase" if uploaded_to_supabase else "local",
                     }
                 )
                 raw_documents.append(doc)
@@ -112,6 +126,8 @@ class DocumentService:
                     "category": category,
                     "file_size": file_size,
                     "uploaded_at": now_str,
+                    "storage_url": storage_url,
+                    "storage_provider": "supabase" if uploaded_to_supabase else "local",
                 }
             )
             raw_documents.append(doc)
@@ -125,7 +141,7 @@ class DocumentService:
             chunk.metadata["total_chunks"] = len(chunked_docs)
             chunk.metadata["char_count"] = len(chunk.page_content)
 
-        # Index chunks into ChromaDB
+        # Index chunks into Vector Store (Qdrant Cloud / ChromaDB)
         chunk_ids = self.vector_manager.add_documents(chunked_docs)
 
         return {
@@ -135,6 +151,9 @@ class DocumentService:
             "chunks_created": len(chunked_docs),
             "chunk_ids_count": len(chunk_ids),
             "uploaded_at": now_str,
+            "storage_provider": "supabase" if uploaded_to_supabase else "local",
+            "storage_url": storage_url,
+            "supabase_bucket": self.supabase_storage.bucket_name if uploaded_to_supabase else None,
             "status": "success",
         }
 
@@ -175,10 +194,14 @@ class DocumentService:
         }
 
     def delete_document(self, filename: str) -> Dict[str, Any]:
-        """Deletes a document and its chunks from vector store and disk."""
+        """Deletes a document and its chunks from vector store, Supabase Storage, and disk."""
         deleted_count = self.vector_manager.delete_by_filename(filename)
-        # Attempt to delete file from disk if present
         clean_filename = Path(filename).name
+
+        # Delete from Supabase Storage bucket
+        supabase_deleted = self.supabase_storage.delete_file(clean_filename)
+
+        # Attempt to delete file from disk if present
         disk_file = Path(settings.UPLOAD_DIR) / clean_filename
         if disk_file.exists():
             disk_file.unlink()
@@ -186,6 +209,7 @@ class DocumentService:
         return {
             "filename": filename,
             "deleted_chunks": deleted_count,
+            "supabase_deleted": supabase_deleted,
             "status": "deleted"
         }
 

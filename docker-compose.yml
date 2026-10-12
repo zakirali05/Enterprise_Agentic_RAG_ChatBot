@@ -20,6 +20,7 @@ services:
       - CHROMA_PERSIST_DIR=/app/data/chroma_db
       - UPLOAD_DIR=/app/data/uploads
       - SESSIONS_DIR=/app/data/sessions
+      - SUPABASE_BUCKET_NAME=${SUPABASE_BUCKET_NAME:-knowledge-documents}
     extra_hosts:
       # Allows backend container to access Ollama running on host OS
       - "host.docker.internal:host-gateway"

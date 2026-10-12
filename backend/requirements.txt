@@ -19,3 +19,4 @@ qdrant-client>=1.11.0
 langchain-qdrant>=0.1.4
 psycopg2-binary>=2.9.9
 ollama>=0.3.3
+supabase>=2.10.0

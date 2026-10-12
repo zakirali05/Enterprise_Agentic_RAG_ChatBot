@@ -14,6 +14,7 @@ import {
   FileUp,
   Cpu,
   Layers,
+  ExternalLink,
 } from "lucide-react";
 import { KnowledgeStats, DocumentInfo } from "@/lib/types";
 import {
@@ -69,12 +70,15 @@ export default function KnowledgeBaseModal({
     setUploadError(null);
     try {
       const res = await uploadDocumentFile(selectedFile, fileCategory);
+      const isSupabase = res.storage_provider === "supabase";
       setUploadMessage(
-        `Successfully indexed "${res.filename}" into ${res.chunks_created} vector chunks!`
+        isSupabase
+          ? `Successfully uploaded "${res.filename}" to Supabase Storage ('${res.supabase_bucket || "knowledge-documents"}') and indexed into ${res.chunks_created} vector chunks!`
+          : `Successfully indexed "${res.filename}" into ${res.chunks_created} vector chunks!`
       );
       setSelectedFile(null);
       onRefresh();
-      setTimeout(() => setActiveTab("inventory"), 1200);
+      setTimeout(() => setActiveTab("inventory"), 1500);
     } catch (err: any) {
       setUploadError(`Upload failed: ${err.message}`);
     } finally {
@@ -312,22 +316,36 @@ export default function KnowledgeBaseModal({
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => handleDelete(doc.filename)}
-                        disabled={isDeletingThis}
-                        className={`p-2 rounded-lg transition-colors cursor-pointer ${
-                          isDeletingThis
-                            ? "text-slate-600 bg-white/5 cursor-not-allowed"
-                            : "text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
-                        }`}
-                        title="Delete document and remove all vectors"
-                      >
-                        {isDeletingThis ? (
-                          <RefreshCw className="w-4 h-4 animate-spin text-rose-400" />
-                        ) : (
-                          <Trash2 className="w-4 h-4" />
+                      <div className="flex items-center gap-1 shrink-0">
+                        {doc.storage_url && (
+                          <a
+                            href={doc.storage_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+                            title="Open / Download from Supabase Storage"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
                         )}
-                      </button>
+
+                        <button
+                          onClick={() => handleDelete(doc.filename)}
+                          disabled={isDeletingThis}
+                          className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                            isDeletingThis
+                              ? "text-slate-600 bg-white/5 cursor-not-allowed"
+                              : "text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
+                          }`}
+                          title="Delete document and remove all vectors"
+                        >
+                          {isDeletingThis ? (
+                            <RefreshCw className="w-4 h-4 animate-spin text-rose-400" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                   );
                 })
@@ -421,8 +439,8 @@ export default function KnowledgeBaseModal({
                 className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:opacity-95 disabled:opacity-50 text-white font-medium text-xs transition-all shadow-lg shadow-cyan-500/20 active:scale-[0.98] cursor-pointer"
               >
                 {isUploading
-                  ? `Chunking & Indexing into ${knowledgeStats?.provider || "Vector Database"}...`
-                  : "Upload & Index Document"}
+                  ? "Uploading to Supabase Storage & Chunking Vectors..."
+                  : "Upload to Supabase Storage & Index Document"}
               </button>
             </form>
           )}

@@ -190,6 +190,7 @@ class VectorStoreManager:
                     for r in records:
                         meta = (r.payload or {}).get("metadata", {})
                         fname = meta.get("filename") or (r.payload or {}).get("source") or "unknown_document"
+                        storage_url = meta.get("storage_url")
                         if fname not in unique_files:
                             unique_files[fname] = {
                                 "filename": fname,
@@ -197,6 +198,7 @@ class VectorStoreManager:
                                 "category": meta.get("category", "Enterprise Knowledge"),
                                 "uploaded_at": meta.get("uploaded_at", "Synced"),
                                 "file_size": meta.get("file_size", 0),
+                                "storage_url": storage_url or "",
                             }
                         unique_files[fname]["chunk_count"] += 1
                     if offset is None:
@@ -219,6 +221,7 @@ class VectorStoreManager:
                     if m:
                         fname = m.get("filename") or m.get("source")
                         if fname:
+                            storage_url = m.get("storage_url")
                             if fname not in unique_files:
                                 unique_files[fname] = {
                                     "filename": fname,
@@ -226,6 +229,7 @@ class VectorStoreManager:
                                     "category": m.get("category", "General"),
                                     "uploaded_at": m.get("uploaded_at", "Unknown"),
                                     "file_size": m.get("file_size", 0),
+                                    "storage_url": storage_url or "",
                                 }
                             unique_files[fname]["chunk_count"] += 1
 
