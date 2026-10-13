@@ -23,12 +23,15 @@ import {
   deleteDocumentFile,
   seedSampleKnowledge,
 } from "@/lib/api";
+import ConfirmModal from "@/components/ConfirmModal";
+import { ToastType } from "@/components/Toast";
 
 interface KnowledgeBaseModalProps {
   isOpen: boolean;
   onClose: () => void;
   knowledgeStats: KnowledgeStats | null;
   onRefresh: () => void;
+  onToast?: (message: string, type?: ToastType, title?: string) => void;
 }
 
 export default function KnowledgeBaseModal({
@@ -36,6 +39,7 @@ export default function KnowledgeBaseModal({
   onClose,
   knowledgeStats,
   onRefresh,
+  onToast,
 }: KnowledgeBaseModalProps) {
   const [activeTab, setActiveTab] = useState<"inventory" | "upload" | "text">(
     "inventory"
@@ -45,6 +49,8 @@ export default function KnowledgeBaseModal({
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [deletingFilename, setDeletingFilename] = useState<string | null>(null);
+  const [fileToDelete, setFileToDelete] = useState<string | null>(null);
+  const [isConfirmDeleting, setIsConfirmDeleting] = useState(false);
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -119,18 +125,35 @@ export default function KnowledgeBaseModal({
     }
   };
 
-  const handleDelete = async (filename: string) => {
-    if (!confirm(`Are you sure you want to remove "${filename}" and all its vector embeddings?`)) {
-      return;
-    }
-    setDeletingFilename(filename);
+  const handleDeleteClick = (filename: string) => {
+    setFileToDelete(filename);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!fileToDelete) return;
+    setIsConfirmDeleting(true);
+    setDeletingFilename(fileToDelete);
     try {
-      await deleteDocumentFile(filename);
+      await deleteDocumentFile(fileToDelete);
       onRefresh();
+      if (onToast) {
+        onToast(
+          `Document "${fileToDelete}" deleted from Supabase & Vector Store`,
+          "success",
+          "Document Deleted"
+        );
+      }
     } catch (err: any) {
-      alert(`Delete error: ${err.message}`);
+      const errMsg = `Delete error: ${err.message}`;
+      if (onToast) {
+        onToast(errMsg, "error", "Delete Failed");
+      } else {
+        setUploadError(errMsg);
+      }
     } finally {
+      setIsConfirmDeleting(false);
       setDeletingFilename(null);
+      setFileToDelete(null);
     }
   };
 
@@ -140,10 +163,18 @@ export default function KnowledgeBaseModal({
     setUploadError(null);
     try {
       const res = await seedSampleKnowledge();
-      setUploadMessage(`Seeded ${res.documents_added} enterprise documents successfully!`);
+      const msg = `Seeded ${res.documents_added} enterprise documents successfully!`;
+      setUploadMessage(msg);
+      if (onToast) {
+        onToast(msg, "success", "Knowledge Base Seeded");
+      }
       onRefresh();
     } catch (err: any) {
-      setUploadError(`Error seeding documents: ${err.message}`);
+      const errText = `Error seeding documents: ${err.message}`;
+      setUploadError(errText);
+      if (onToast) {
+        onToast(errText, "error", "Seed Failed");
+      }
     } finally {
       setIsUploading(false);
     }
@@ -330,7 +361,7 @@ export default function KnowledgeBaseModal({
                         )}
 
                         <button
-                          onClick={() => handleDelete(doc.filename)}
+                          onClick={() => handleDeleteClick(doc.filename)}
                           disabled={isDeletingThis}
                           className={`p-2 rounded-lg transition-colors cursor-pointer ${
                             isDeletingThis
@@ -500,6 +531,33 @@ export default function KnowledgeBaseModal({
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal for Document Deletion */}
+      <ConfirmModal
+        isOpen={!!fileToDelete}
+        title="Delete Knowledge Document"
+        message={
+          <div>
+            <p>
+              Are you sure you want to remove{" "}
+              <span className="font-semibold text-slate-100 font-mono">
+                {fileToDelete}
+              </span>
+              ?
+            </p>
+            <p className="mt-2 text-xs text-slate-400 leading-relaxed">
+              This will remove the file from Supabase Cloud Storage and permanently delete all associated vector embeddings and chunks from the vector database.
+            </p>
+          </div>
+        }
+        confirmText="Delete Document"
+        confirmVariant="danger"
+        isLoading={isConfirmDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          if (!isConfirmDeleting) setFileToDelete(null);
+        }}
+      />
     </div>
   );
 }

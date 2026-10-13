@@ -18,6 +18,8 @@ import ChatInput from "@/components/ChatInput";
 import KnowledgeBaseModal from "@/components/KnowledgeBaseModal";
 import CitationsDrawer from "@/components/CitationsDrawer";
 import ChatSkeleton from "@/components/ChatSkeleton";
+import ConfirmModal from "@/components/ConfirmModal";
+import ToastContainer, { ToastItem, ToastType } from "@/components/Toast";
 import {
   Message,
   Session,
@@ -49,9 +51,13 @@ export default function Home() {
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [knowledgeStats, setKnowledgeStats] = useState<KnowledgeStats | null>(null);
 
-  // Modals & Drawers
+  // Modals, Drawers & Mobile Sidebar State
   const [isKnowledgeModalOpen, setIsKnowledgeModalOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSidebarPinned, setIsSidebarPinned] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
+  const [isDeletingSession, setIsDeletingSession] = useState(false);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [citationsDrawer, setCitationsDrawer] = useState<{
     isOpen: boolean;
     citations: Citation[];
@@ -74,11 +80,49 @@ export default function Home() {
     scrollToBottom();
   }, [messages, isLoading]);
 
-  // Load health and knowledge base stats on mount
+  // Toast helper
+  const showToast = (
+    message: string,
+    type: ToastType = "info",
+    title?: string
+  ) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    setToasts((prev) => [...prev, { id, message, type, title }]);
+  };
+
+  const dismissToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  // Load health, knowledge base stats, and sidebar pinned preference on mount
   useEffect(() => {
     loadHealthAndStats();
     loadSessions();
+
+    if (typeof window !== "undefined") {
+      const savedPinned = localStorage.getItem("copilot_sidebar_pinned") === "true";
+      setIsSidebarPinned(savedPinned);
+      if (savedPinned) {
+        setSidebarOpen(true);
+      }
+    }
   }, []);
+
+  const toggleSidebarPin = () => {
+    setIsSidebarPinned((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("copilot_sidebar_pinned", String(next));
+      }
+      if (next) {
+        setSidebarOpen(true);
+        showToast("Sidebar fixed on mobile screen", "info", "Sidebar Fixed");
+      } else {
+        showToast("Sidebar switched to overlay drawer mode", "info", "Drawer Mode");
+      }
+      return next;
+    });
+  };
 
   const loadHealthAndStats = async () => {
     const h = await fetchHealth();
@@ -137,16 +181,38 @@ export default function Home() {
     setMessages([]);
   };
 
-  const handleDeleteSession = async (sessionId: string) => {
-    await deleteSession(sessionId);
-    const updated = sessions.filter((s) => s.id !== sessionId);
-    setSessions(updated);
-    if (activeSessionId === sessionId) {
-      if (updated.length > 0) {
-        handleSelectSession(updated[0].id);
+  const handleRequestDeleteSession = (session: Session) => {
+    setSessionToDelete(session);
+  };
+
+  const handleConfirmDeleteSession = async () => {
+    if (!sessionToDelete) return;
+    setIsDeletingSession(true);
+    try {
+      const ok = await deleteSession(sessionToDelete.id);
+      if (ok) {
+        const updated = sessions.filter((s) => s.id !== sessionToDelete.id);
+        setSessions(updated);
+        showToast(
+          `Conversation "${sessionToDelete.title}" deleted successfully`,
+          "success",
+          "Conversation Deleted"
+        );
+        if (activeSessionId === sessionToDelete.id) {
+          if (updated.length > 0) {
+            handleSelectSession(updated[0].id);
+          } else {
+            handleNewChat();
+          }
+        }
       } else {
-        handleNewChat();
+        showToast("Could not delete conversation from server", "error", "Delete Failed");
       }
+    } catch (err: any) {
+      showToast(`Error deleting conversation: ${err.message}`, "error", "Delete Failed");
+    } finally {
+      setIsDeletingSession(false);
+      setSessionToDelete(null);
     }
   };
 
@@ -348,25 +414,41 @@ export default function Home() {
   ];
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#090d16] text-slate-100 font-sans">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#090d16] text-slate-100 font-sans relative">
+      {/* Mobile Backdrop for Drawer Mode */}
+      {sidebarOpen && !isSidebarPinned && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden animate-fade-in cursor-pointer"
+          aria-hidden="true"
+        />
+      )}
+
       {/* Left Sidebar */}
       <Sidebar
         sessions={sessions}
         activeSessionId={activeSessionId}
         onSelectSession={handleSelectSession}
-        onDeleteSession={handleDeleteSession}
+        onRequestDeleteSession={handleRequestDeleteSession}
         onNewChat={handleNewChat}
         onOpenKnowledgeModal={() => setIsKnowledgeModalOpen(true)}
         knowledgeStats={knowledgeStats}
         isOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen(!sidebarOpen)}
+        onClose={() => setSidebarOpen(false)}
+        isPinned={isSidebarPinned}
+        onTogglePin={toggleSidebarPin}
         isLoadingSessions={isLoadingSessions}
       />
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
         {/* Header */}
-        <Header onNewChat={handleNewChat} />
+        <Header
+          onNewChat={handleNewChat}
+          onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+          isSidebarOpen={sidebarOpen}
+          isSidebarPinned={isSidebarPinned}
+        />
 
         {/* Chat Feed */}
         <div className="flex-1 overflow-y-auto">
@@ -453,6 +535,7 @@ export default function Home() {
         onClose={() => setIsKnowledgeModalOpen(false)}
         knowledgeStats={knowledgeStats}
         onRefresh={loadHealthAndStats}
+        onToast={showToast}
       />
 
       {/* Citations Inspector Drawer */}
@@ -464,6 +547,36 @@ export default function Home() {
         }
         selectedCitationId={citationsDrawer.selectedId}
       />
+
+      {/* Confirmation Modal for Session Deletion */}
+      <ConfirmModal
+        isOpen={!!sessionToDelete}
+        title="Delete Conversation"
+        message={
+          <div>
+            <p>
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-slate-100">
+                "{sessionToDelete?.title}"
+              </span>
+              ?
+            </p>
+            <p className="mt-2 text-xs text-slate-400 leading-relaxed">
+              This will permanently delete this conversation and all associated messages. This action cannot be undone.
+            </p>
+          </div>
+        }
+        confirmText="Delete Conversation"
+        confirmVariant="danger"
+        isLoading={isDeletingSession}
+        onConfirm={handleConfirmDeleteSession}
+        onCancel={() => {
+          if (!isDeletingSession) setSessionToDelete(null);
+        }}
+      />
+
+      {/* Global Toast Notifications */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }
