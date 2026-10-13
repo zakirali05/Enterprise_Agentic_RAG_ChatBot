@@ -75,7 +75,7 @@ export default function Sidebar({
           Navigation & Chats
         </span>
         <div className="flex items-center gap-1.5">
-          {onTogglePin && (
+          {/* {onTogglePin && (
             <button
               onClick={onTogglePin}
               className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium transition-colors cursor-pointer border ${
@@ -101,7 +101,7 @@ export default function Sidebar({
                 </>
               )}
             </button>
-          )}
+          )} */}
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
@@ -128,9 +128,9 @@ export default function Sidebar({
       <div className="flex-1 overflow-y-auto p-3 space-y-1">
         <div className="px-3 py-1.5 text-[11px] font-semibold tracking-wider text-slate-400 uppercase flex items-center justify-between">
           <span>Recent Conversations</span>
-          <span className="text-[10px] text-slate-400 font-mono">
+          {/* <span className="text-[10px] text-slate-400 font-mono">
             {sessions.length}
-          </span>
+          </span> */}
         </div>
 
         {isLoadingSessions ? (
