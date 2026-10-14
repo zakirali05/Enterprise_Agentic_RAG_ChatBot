@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     
     # Model Generation Parameters
     TEMPERATURE: float = 0.2
-    MAX_TOKENS: int = 2048
+    MAX_TOKENS: int = int(os.getenv("MAX_TOKENS", "600"))
     
     # Paths & Storage
     BASE_DIR: Path = Path(__file__).resolve().parent.parent
