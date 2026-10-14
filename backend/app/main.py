@@ -66,11 +66,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS Middleware
+# CORS Middleware (allows Vercel, localhost, and custom domains)
 app.add_middleware(
     CORSMiddleware,
+    allow_origin_regex=r"https?://.*",
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
