@@ -195,7 +195,10 @@ export default function KnowledgeBaseModal({
               </h2>
               <p className="text-xs text-slate-400">
                 {knowledgeStats?.provider || "Vector Store"} embedded with{" "}
-                {knowledgeStats?.embedding_model || "nomic-embed-text"} (768d)
+                <span className="font-mono text-cyan-300">
+                  {knowledgeStats?.embedding_model || "BAAI/bge-small-en-v1.5"}
+                </span>{" "}
+                ({knowledgeStats?.embedding_dim ? `${knowledgeStats.embedding_dim}d` : "384d"})
               </p>
             </div>
           </div>
@@ -235,8 +238,11 @@ export default function KnowledgeBaseModal({
           </div>
           <div className="p-3 rounded-xl bg-slate-950/60 border border-white/5">
             <span className="text-slate-400 text-[11px] block">Embedding Model</span>
-            <span className="text-base font-bold text-indigo-400 font-mono text-xs truncate block">
-              nomic-embed-text
+            <span
+              className="text-base font-bold text-indigo-400 font-mono text-xs truncate block"
+              title={knowledgeStats?.embedding_model || "BAAI/bge-small-en-v1.5"}
+            >
+              {knowledgeStats?.embedding_model || "BAAI/bge-small-en-v1.5"}
             </span>
           </div>
         </div>

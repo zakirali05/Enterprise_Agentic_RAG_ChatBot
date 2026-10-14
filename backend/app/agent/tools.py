@@ -2,7 +2,7 @@
 Agent Tools Module
 ==================
 Integrates tools available to the LangGraph copilot:
-1. Enterprise Knowledge Retrieval (ChromaDB + nomic-embed-text)
+1. Enterprise Knowledge Retrieval (Qdrant / ChromaDB + Embeddings)
 2. Free DuckDuckGo Web Search (Real-time live fallback with no API keys)
 """
 
@@ -16,7 +16,7 @@ from app.core.vector_store import get_vector_manager
 
 def retrieve_knowledge_documents(query: str, k: int = 4) -> List[Tuple[Document, float]]:
     """
-    Searches the persistent ChromaDB collection using nomic-embed-text embeddings.
+    Searches the persistent vector store using semantic embeddings (Hugging Face / Ollama).
     
     Args:
         query: User's search query.

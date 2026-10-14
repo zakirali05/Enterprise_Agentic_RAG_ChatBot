@@ -25,11 +25,14 @@ class Settings(BaseSettings):
     GROQ_API_KEY: Optional[str] = None
     GROQ_MODEL: str = "qwen/qwen3.8-27b"
 
-    # Ollama Local LLM & Embedding Settings (100% Free & Local)
-    # Default host points to localhost; in Docker this can be overridden via OLLAMA_BASE_URL
+    # Embedding Configuration ("huggingface" or "ollama")
+    EMBEDDING_PROVIDER: str = os.getenv("EMBEDDING_PROVIDER", "huggingface")
+    HUGGINGFACE_API_KEY: Optional[str] = None
+    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
+
+    # Ollama Local LLM & Embedding Settings (Local Fallback)
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     LLM_MODEL: str = os.getenv("LLM_MODEL", "qwen3:1.7b")
-    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
     
     # Model Generation Parameters
     TEMPERATURE: float = 0.2
@@ -43,7 +46,7 @@ class Settings(BaseSettings):
     SESSIONS_DIR: str = str(DATA_DIR / "sessions")
     
     # RAG & Chunking Parameters
-    # nomic-embed-text supports up to 2048 tokens; 700 chars (~150-200 tokens) provides high semantic granularity
+    # Standard embedding chunking; 700 chars (~150-200 tokens) provides high semantic granularity
     CHUNK_SIZE: int = 700
     CHUNK_OVERLAP: int = 120
     TOP_K_RETRIEVAL: int = 4

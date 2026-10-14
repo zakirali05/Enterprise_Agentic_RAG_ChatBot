@@ -37,7 +37,7 @@ async def upload_document(
     category: Optional[str] = Form("Enterprise Knowledge"),
 ):
     """
-    Uploads and indexes a document (PDF, TXT, Markdown, CSV) into ChromaDB with nomic-embed-text.
+    Uploads and indexes a document (PDF, TXT, Markdown, CSV) into the vector store with semantic embeddings.
     """
     service = get_document_service()
     

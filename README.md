@@ -11,7 +11,7 @@
 [![Docker](https://img.shields.io/badge/Deployment-Docker%20Compose-2496ED.svg)](https://www.docker.com)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-An enterprise-grade, hybrid cloud & self-hosted **Agentic Retrieval-Augmented Generation (RAG) Copilot** built with **LangGraph**, **FastAPI**, **Supabase Cloud Storage**, **Qdrant Cloud / ChromaDB**, and **Next.js 16**. Powered by **Groq LPU (`qwen/qwen3.8-27b`)** for ultra-low latency token generation (with local **Ollama** fallback) and **`nomic-embed-text`** for high-dimensional semantic embeddings.
+An enterprise-grade, hybrid cloud & self-hosted **Agentic Retrieval-Augmented Generation (RAG) Copilot** built with **LangGraph**, **FastAPI**, **Supabase Cloud Storage**, **Qdrant Cloud / ChromaDB**, and **Next.js 16**. Powered by **Groq LPU (`qwen/qwen3.8-27b`)** for ultra-low latency token generation (with local **Ollama** fallback) and **Hugging Face (`BAAI/bge-small-en-v1.5`)** embeddings via FastEmbed ONNX runtime for ultra-fast, lightweight 384-dimensional semantic retrieval (with local **Ollama** fallback).
 
 ---
 
@@ -47,7 +47,7 @@ flowchart TD
     DocRoute -->|3. Chunk & Embed| VectorEngine
 
     subgraph VectorEngine ["Vector Store & Embeddings"]
-        Embedder[nomic-embed-text 768d]
+        Embedder[Hugging Face BGE / FastEmbed 384d]
         Qdrant[(Qdrant Cloud AWS Cluster)]
         Chroma[(ChromaDB Embedded Fallback)]
     end
@@ -85,7 +85,7 @@ flowchart TD
 - **Enterprise Agentic RAG Copilot (FastAPI, LangGraph, Supabase Storage, Qdrant Cloud, Next.js, Groq):**
   - Architected a hybrid enterprise Agentic RAG system with **LangGraph**, implementing **Corrective RAG (CRAG)** to autonomously grade vector document relevance and trigger dynamic web fallbacks.
   - Implemented cloud object storage with **Supabase Storage** (`knowledge-documents` bucket) for enterprise document archiving and synchronized multi-chunk deletions.
-  - Deployed dual-tier vector storage with **Qdrant Cloud** and **ChromaDB**, using **`nomic-embed-text`** for 768-dimensional normalized cosine retrieval.
+  - Deployed dual-tier vector storage with **Qdrant Cloud** and **ChromaDB**, using **Hugging Face (`BAAI/bge-small-en-v1.5`)** via FastEmbed for high-accuracy 384-dimensional normalized cosine retrieval.
   - Built an asynchronous **FastAPI** backend supporting **Server-Sent Events (SSE)** for real-time streaming of LLM tokens, step-by-step reasoning traces, and citation metadata via **Groq LPU** (`qwen/qwen3.8-27b`).
   - Developed a high-performance **Next.js 16** dashboard featuring interactive citation inspection drawers, live LangGraph trace timelines, and drag-and-drop document ingestion.
   - Containerized services with **Docker Compose**, establishing environment-driven configurations and volume persistence.
@@ -118,7 +118,8 @@ flowchart TD
 │       │   ├── supabase_client.py # Supabase Storage manager (knowledge-documents bucket)
 │       │   ├── vector_store.py    # Qdrant Cloud & ChromaDB manager
 │       │   ├── llm_client.py      # Groq cloud LPU inference client
-│       │   └── ollama_client.py   # Ollama local inference & nomic-embed-text client
+│       │   ├── embedding_provider.py # Hugging Face FastEmbed & Ollama embedding manager
+│       │   └── ollama_client.py   # Ollama local inference client
 │       ├── services/
 │       │   ├── document_service.py# Supabase ingestion, PDF parsing, chunking, deletions
 │       │   └── chat_service.py    # Session manager & SSE token streaming generator
@@ -155,11 +156,13 @@ flowchart TD
 
 1. **Python 3.10+**
 2. **Node.js 18+**
-3. **Ollama:** Installed locally if running in local inference mode:
-   ```bash
-   ollama pull qwen3:1.7b
-   ollama pull nomic-embed-text
-   ```
+3. **Hugging Face & Ollama:**
+   - **Hugging Face Embeddings (Default):** Runs automatically with `HUGGINGFACE_API_KEY` using FastEmbed ONNX (zero GPU/PyTorch overhead, 100% free).
+   - **Ollama (Optional Local Fallback):** Installed locally if running in 100% self-hosted offline mode:
+     ```bash
+     ollama pull qwen3:1.7b
+     ollama pull nomic-embed-text
+     ```
 
 ---
 
@@ -177,6 +180,11 @@ Configure your credentials in `.env`:
 LLM_PROVIDER="groq"
 GROQ_API_KEY="gsk_your_groq_api_key_here"
 GROQ_MODEL="qwen/qwen3.8-27b"
+
+# Hugging Face Embeddings (Free Token at https://huggingface.co/settings/tokens)
+EMBEDDING_PROVIDER="huggingface"
+HUGGINGFACE_API_KEY="hf_your_huggingface_token_here"
+EMBEDDING_MODEL="BAAI/bge-small-en-v1.5"
 
 # Supabase Storage (Cloud Object Storage - Free at https://supabase.com)
 SUPABASE_URL="https://your-project.supabase.co"

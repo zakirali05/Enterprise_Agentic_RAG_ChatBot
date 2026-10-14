@@ -34,18 +34,13 @@ def get_chat_llm(temperature: Optional[float] = None, streaming: bool = False) -
     )
 
 
-def get_embeddings() -> OllamaEmbeddings:
+def get_embeddings():
     """
-    Initializes and returns the nomic-embed-text embedding model.
-    This model produces 768-dimensional embeddings optimized for RAG.
-    
-    Returns:
-        OllamaEmbeddings configured with nomic-embed-text.
+    Returns the configured embedding model (Hugging Face / FastEmbed or Ollama).
+    Delegates to the centralized embedding provider.
     """
-    return OllamaEmbeddings(
-        base_url=settings.OLLAMA_BASE_URL,
-        model=settings.EMBEDDING_MODEL,
-    )
+    from app.core.embedding_provider import get_embeddings as _get_emb
+    return _get_emb()
 
 
 async def check_ollama_health() -> Dict[str, Any]:

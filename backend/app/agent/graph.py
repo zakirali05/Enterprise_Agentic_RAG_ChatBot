@@ -3,7 +3,7 @@ LangGraph Enterprise Agentic Workflow
 ======================================
 Builds the state machine graph implementing Corrective RAG (CRAG):
 1. Route Query (Intent Detection & User Mode selection)
-2. Retrieve Chunks (ChromaDB + nomic-embed-text)
+2. Retrieve Chunks (Vector Store + Hugging Face / Ollama Embeddings)
 3. Grade Documents (CRAG Relevance Evaluation)
 4. Conditional Web Fallback (DuckDuckGo Live Search)
 5. Synthesize Answer (Qwen3:1.7B with inline citations)
@@ -110,7 +110,7 @@ def retrieve_node(state: AgentState) -> Dict[str, Any]:
         "step": "retriever",
         "title": "ChromaDB Semantic Retrieval",
         "status": "completed",
-        "details": f"Embedded query with nomic-embed-text; retrieved {len(docs)} chunks",
+        "details": f"Embedded query with {settings.EMBEDDING_MODEL}; retrieved {len(docs)} chunks",
         "timestamp": time.time(),
     })
 

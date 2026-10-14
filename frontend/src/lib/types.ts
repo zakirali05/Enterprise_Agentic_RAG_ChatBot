@@ -56,6 +56,7 @@ export interface KnowledgeStats {
   documents: DocumentInfo[];
   collection_name: string;
   embedding_model: string;
+  embedding_dim?: number;
   provider?: string;
 }
 

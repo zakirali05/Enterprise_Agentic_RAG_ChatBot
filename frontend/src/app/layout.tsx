@@ -8,18 +8,19 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Enterprise Agentic RAG Copilot | LangGraph & ChromaDB",
+  title: "Enterprise Agentic RAG Copilot | LangGraph & Qdrant Cloud",
   description:
-    "Full-stack enterprise AI copilot with Corrective RAG (CRAG), real-time SSE streaming, LangGraph state machine, ChromaDB vector store, and local Ollama inference.",
+    "Full-stack enterprise AI copilot with Corrective RAG (CRAG), real-time SSE streaming, LangGraph state machine, Qdrant Cloud vector store, Hugging Face embeddings, and Supabase Storage.",
   keywords: [
     "Agentic RAG",
     "LangGraph",
     "FastAPI",
     "Next.js",
-    "ChromaDB",
-    "Ollama",
-    "nomic-embed-text",
-    "qwen3",
+    "Qdrant Cloud",
+    "Hugging Face",
+    "BAAI/bge-small-en-v1.5",
+    "Supabase Storage",
+    "Groq LPU",
     "Enterprise AI",
   ],
 };

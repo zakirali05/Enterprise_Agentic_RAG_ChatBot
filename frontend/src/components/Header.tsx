@@ -52,7 +52,7 @@ export default function Header({
             </span>
           </div>
           <p className="text-xs text-slate-400 hidden sm:block">
-            Powered by Langchain, LangGraph, QdrantDB, Redis, FastAPI, PostgreSQL, Supabase
+            Powered by LangGraph, Groq, Hugging Face, Qdrant Cloud, Supabase & FastAPI
           </p>
         </div>
       </div>

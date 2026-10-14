@@ -2,7 +2,7 @@
 Document Ingestion & Processing Service
 =======================================
 Handles document loading (PDF, Markdown, TXT, CSV), recursive semantic chunking,
-metadata enrichment, and indexing into the ChromaDB vector store with nomic-embed-text.
+metadata enrichment, and indexing into the vector store with high-performance embeddings.
 """
 
 import os
@@ -22,7 +22,7 @@ from app.core.supabase_client import get_supabase_storage
 
 class DocumentService:
     """
-    Manages document parsing, chunking with nomic-embed-text embeddings, Supabase Storage, and indexing.
+    Manages document parsing, chunking with semantic embeddings, Supabase Storage, and indexing.
     """
 
     def __init__(self):
@@ -233,7 +233,7 @@ This enterprise policy outlines strict data privacy, model governance, and ethic
 
 ## 3. Local Model Deployment Standards
 - All on-premise inference engines must run with minimum 4-bit quantization (Q4_K_M) to maintain low latency (<150ms per token).
-- Embedding models must support normalized cosine similarity matrices (such as nomic-embed-text with 768 dimensions).
+- Embedding models must support normalized cosine similarity matrices (such as Hugging Face BGE with 384 dimensions).
 - Hallucination monitoring: All enterprise responses must cite authoritative chunks with a minimum similarity score threshold of 0.35.
 
 ## 4. Model Fine-Tuning & Drift Detection
@@ -253,7 +253,7 @@ The Enterprise Copilot platform runs on a modern hybrid microservices architectu
 - **Backend API Gateway:** FastAPI asynchronous microservice, Python 3.14, Uvicorn worker pool.
 - **Agent Orchestrator:** LangGraph state machine implementing Corrective RAG (CRAG) with query routing and fallback web search.
 - **Vector Database:** ChromaDB local vector store with persistence directory mounted on high-speed NVMe storage.
-- **Local Inference:** Ollama daemon serving Qwen-1.7B and nomic-embed-text.
+- **Local Inference:** Inference runtime serving Groq/Qwen and Hugging Face BGE embeddings.
 
 ## 2. Service Level Objectives (SLOs)
 - **API Availability:** 99.95% uptime during business hours.

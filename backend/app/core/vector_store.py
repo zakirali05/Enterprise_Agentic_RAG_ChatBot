@@ -4,14 +4,14 @@ Vector Store Management Module
 Supports both:
 1. Qdrant Cloud (Production Free 1GB Cluster)
 2. ChromaDB (Local Embedded Persistence)
-Using nomic-embed-text embeddings.
+Using semantic embeddings (Hugging Face / Ollama).
 """
 
 import os
 from typing import List, Tuple, Dict, Any, Optional
 from langchain_core.documents import Document
 from app.config import settings
-from app.core.ollama_client import get_embeddings
+from app.core.embedding_provider import get_embeddings
 
 
 class VectorStoreManager:
@@ -23,6 +23,12 @@ class VectorStoreManager:
     def __init__(self):
         self.provider = getattr(settings, "VECTOR_DB_TYPE", "chroma").lower()
         self.embeddings = get_embeddings()
+        try:
+            probe = self.embeddings.embed_query("dimension probe")
+            self.embedding_dim = len(probe)
+        except Exception as e:
+            print(f"Warning detecting embedding dimension: {e}")
+            self.embedding_dim = 384
         self.collection_name = "enterprise_knowledge"
         self._qdrant_client = None
         self._qdrant_store = None
@@ -42,12 +48,23 @@ class VectorStoreManager:
                     api_key=settings.QDRANT_API_KEY,
                 )
 
-                # Ensure collection exists with 768 dimensions for nomic-embed-text
+                # Ensure collection exists and matches the embedding dimension
                 if not self._qdrant_client.collection_exists(self.collection_name):
                     self._qdrant_client.create_collection(
                         collection_name=self.collection_name,
-                        vectors_config=VectorParams(size=768, distance=Distance.COSINE),
+                        vectors_config=VectorParams(size=self.embedding_dim, distance=Distance.COSINE),
                     )
+                else:
+                    col_info = self._qdrant_client.get_collection(self.collection_name)
+                    existing_dim = col_info.config.params.vectors.size
+                    if existing_dim != self.embedding_dim:
+                        emb_name = getattr(self.embeddings, 'model_name', settings.EMBEDDING_MODEL)
+                        print(f"🔄 Recreating Qdrant collection: dimension changed from {existing_dim} to {self.embedding_dim} ({emb_name})")
+                        self._qdrant_client.delete_collection(self.collection_name)
+                        self._qdrant_client.create_collection(
+                            collection_name=self.collection_name,
+                            vectors_config=VectorParams(size=self.embedding_dim, distance=Distance.COSINE),
+                        )
 
                 # Ensure payload index on metadata.filename for filtering and deletion
                 try:
@@ -210,7 +227,8 @@ class VectorStoreManager:
                     "documents": list(unique_files.values()),
                     "collection_name": self.collection_name,
                     "provider": "Qdrant Cloud (AWS)",
-                    "embedding_model": settings.EMBEDDING_MODEL,
+                    "embedding_model": getattr(self.embeddings, "model_name", settings.EMBEDDING_MODEL),
+                    "embedding_dim": self.embedding_dim,
                 }
             elif self._chroma_store:
                 count = self._chroma_store._collection.count()
@@ -239,7 +257,8 @@ class VectorStoreManager:
                     "documents": list(unique_files.values()),
                     "collection_name": "enterprise_knowledge_base",
                     "provider": "Local ChromaDB",
-                    "embedding_model": settings.EMBEDDING_MODEL,
+                    "embedding_model": getattr(self.embeddings, "model_name", settings.EMBEDDING_MODEL),
+                    "embedding_dim": self.embedding_dim,
                 }
         except Exception as e:
             return {

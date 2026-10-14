@@ -354,7 +354,7 @@ export default function Home() {
                       ...m,
                       content:
                         m.content +
-                        `\n\n> ⚠️ **Error:** ${errMsg}\n> Please ensure Ollama is running and models are loaded.`,
+                        `\n\n> ⚠️ **Error:** ${errMsg}\n> Please ensure backend server is running and API credentials (GROQ_API_KEY, HUGGINGFACE_API_KEY) are configured.`,
                       isStreaming: false,
                     }
                   : m
@@ -466,7 +466,7 @@ export default function Home() {
                 </h2>
                 <p className="text-sm text-slate-400 max-w-xl mx-auto leading-relaxed">
                   Autonomous enterprise intelligence platform combining LangGraph state
-                  orchestration, ChromaDB vector indexing, and local Ollama inference.
+                  orchestration, Qdrant Cloud vector indexing, and Groq / Hugging Face inference.
                   Ask questions across corporate documents or search the live web.
                 </p>
               </div>

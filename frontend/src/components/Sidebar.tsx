@@ -209,9 +209,9 @@ export default function Sidebar({
 
           <div className="space-y-1 text-slate-400 text-[11px] font-mono leading-tight">
             <div>• LLM: Groq LPU (qwen3.8-27b)</div>
+            <div>• Embeddings: Hugging Face BGE</div>
             <div>• Vector DB: Qdrant Cloud</div>
             <div>• Storage: Supabase Cloud</div>
-            <div>• Memory: Neon Postgres</div>
             <div>• Agent: LangGraph CRAG</div>
           </div>
         </div>
